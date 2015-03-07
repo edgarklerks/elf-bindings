@@ -1,4 +1,32 @@
 module Main where
+-- = Preprocessor for elf headers
+--
+-- | This is a simple preprocessor for c header files.
+-- It will accept a header, and try to differentiate between constants and macro's,
+-- then it will create three files, which can be concatenated with a template file,
+-- which loads the appropiate binding-dsl headers:
+--
+--       1. For the constants. This is a rather simple conversion.
+--       2. For the macros, on the haskell side.
+--       3. For the macros, on the c side.
+--
+-- regenerate_constants.sh will merge them together with the appropiate template and
+-- copy them to the src dir, where cabal can find them.
+--
+-- == /Potential pitfalls/
+--
+-- It makes some assumptions (and therefore can break):
+--
+--       1. Macros only deal with numbers (in this particular case, quite reasonable)
+--       2. The macros won't rely on overflow (doomed to fail)
+--       3. Word64 is fine choice for all macro parameters and return types (probably not).
+--
+-- If assumption 2 and 3 are causing trouble, it is difficult to fix, because a macro is untyped and
+-- it is not easy to type them from the comments or by other means.
+--
+-- Platform specific code is probably needed, but for now, lets hope for the best.
+-- If assumption 1 is causing trouble, it will break the type system (yikes), but little can be done
+-- about it. Tests are needed to ensure the safety of this library.
 
 import Language.Preprocessor.Cpphs
 import System.Environment
