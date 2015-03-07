@@ -13,6 +13,8 @@ AC_PROG_CC
 AC_CHECK_HEADERS([elf.h],
 	[AC_DEFINE(_HAVE_LIB_ELF, 1, [If defined we don't need the packaged lib elf])], [AC_DEFINE(_HAVE_LIB_ELF, 0, [Using packaged elf file])])
 # Checks for typedefs, structures, anid compiler characteristics.
+
+# Generates the hsc and c files needed for the binding 
 AC_CONFIG_COMMANDS([GENERATED_ELF_FILES],[], [./buildtools/regenerate_constants.sh])
 
 # Checks for library functions.
