@@ -16,8 +16,17 @@ import Data.Int
 import qualified Data.Bits as B
 import Foreign.C.Types
 
+-- | This specifies what the number of bits of a type or structure is.
+-- There is a Elf16 format (Compact Elf), so it could be that B16
+-- will be added to the list.
+-- Bx says the number of bits of this structure is unknown or is some
+-- local custom type.
+-- This type may not be parametrized, because it is used as kind.
+
 data Bits = B32 | B64 | Bx
      deriving (Show, Read, Eq, Ord)
+
+-- | The reflected c types
 data ElfTypes = ElfAddr
               | ElfOff
               | ElfSection
@@ -31,23 +40,31 @@ data ElfTypes = ElfAddr
               | ElfString
     deriving (Show, Read, Eq)
 
+-- | The class of elf files, Unknown is added to facilitate
+-- newer values, it is pretty easy to add another class as third party
 data ElfClass = ClassInvalid
               | Class32
               | Class64
               | ClassUnknown Word8
      deriving (Show, Read,Eq)
 
+-- | The direction of bytes, Least significant byte, most significant byte.
+-- There are probably no other models, but added it anyway.
 data ElfData = DataUnknown
              | Data2LSB
              | Data2MSB
              | DataOther Word8
      deriving (Show, Read,Eq)
 
+-- | The version of a Elf.
 data ElfVersion = VersionInvalid
                 | VersionCurrent
                 | VersionOther Word8
      deriving (Show, Read, Eq)
 
+-- | The OS ABI of the Elf, some platforms are added.
+-- Others could be matched by comparing the value with
+-- a constant.
 data ElfAbi = AbiNone
             | AbiSysV
             | AbiHPUX
@@ -62,6 +79,7 @@ data ElfAbi = AbiNone
             | AbiUnknown Word8
      deriving (Show, Eq, Read)
 
+-- | A type family, which translates between the c types and the haskell types.
 type family ElfType (b :: Bits) (c  :: ElfTypes)
 type instance ElfType B64 ElfAddr = Word64
 type instance ElfType B64 ElfOff = Word64
@@ -75,20 +93,21 @@ type instance ElfType b ElfSxword = Int64
 type instance ElfType b ElfXword = Word64
 type instance ElfType b ElfString = [ElfType b ElfByte]
 
+-- | Todo: should be removed.
 type family NumBits x :: Bits
 type instance NumBits (Ehdr B64 n ) = B64
 
+-- | A version of MachineType, which is used to parametrize a type family, therefore it
+-- contains only two values at the moment. More will be added.
 data MachineType = X86_64
                  | I386
     deriving (Show, Eq, Read)
-type family BitsExtract c :: Bits
-
+-- | Extension of MachineType to be used on the value level.
 data Machine = KnownMachine MachineType
              | OtherMachine Word16
+     deriving (Show, Eq, Read)
 
-deriving instance Show Machine
-deriving instance Eq Machine
-
+-- | The type of the file. Elf is a versatelite format.
 data FileType = Rel
               | Exec
               | Dyn
@@ -96,14 +115,134 @@ data FileType = Rel
               | UnknownType
               | OtherType Word16
      deriving (Show, Eq, Read)
--- class was:
--- class Convertible s c (b :: Bits) (n :: ElfByte) | s -> c, s -> b, c -> n
---
+
+data ShType = ShNull
+            | ShProgBits
+            | ShSymTab
+            | ShStrTab
+            | ShRelA
+            | ShHash
+            | ShDynamic
+            | ShNote
+            | ShNobits
+            | ShRel
+            | ShShLib
+            | ShDynSym
+            | ShInitArray
+            | ShFiniArray
+            | ShPreInitArray
+            | ShGroup
+            | ShSymTabIndex
+            | ShNum
+            | ShLoos
+            | ShGnuAttributes
+            | ShGnuHash
+            | ShGnuLibList
+            | ShChecksum
+            | ShLosunw
+            | ShSunwMove
+            | ShSunwComdat
+            | ShSunwSyminfo
+            | ShGnuVerdef
+            | ShGnuVerneed
+            | ShGnuVersym
+            | ShHisunw
+            | ShHios
+            | ShLoproc
+            | ShHiproc
+            | ShLouser
+            | ShHiuser
+        deriving (Eq, Show)
+
+
+instance Convertible s ShType where
+  type From b ShType = ElfType b ElfWord
+  toElf _ ShNull = c'SHT_NULL
+  toElf _ ShProgBits = c'SHT_PROGBITS
+  toElf _ ShSymTab = c'SHT_SYMTAB
+  toElf _ ShStrTab = c'SHT_STRTAB
+  toElf _ ShRelA = c'SHT_RELA
+  toElf _ ShHash = c'SHT_HASH
+  toElf _ ShDynamic = c'SHT_DYNAMIC
+  toElf _ ShNote = c'SHT_NOTE
+  toElf _ ShNobits = c'SHT_NOBITS
+  toElf _ ShRel = c'SHT_REL
+  toElf _ ShShLib = c'SHT_SHLIB
+  toElf _ ShDynSym = c'SHT_DYNSYM
+  toElf _ ShInitArray = c'SHT_INIT_ARRAY
+  toElf _ ShFiniArray = c'SHT_FINI_ARRAY
+  toElf _ ShPreInitArray = c'SHT_PREINIT_ARRAY
+  toElf _ ShGroup = c'SHT_GROUP
+  toElf _ ShSymTabIndex = c'SHT_SYMTAB_SHNDX
+  toElf _ ShNum = c'SHT_NUM
+  toElf _ ShLoos = c'SHT_LOOS
+  toElf _ ShGnuAttributes = c'SHT_GNU_ATTRIBUTES
+  toElf _ ShGnuHash = c'SHT_GNU_HASH
+  toElf _ ShGnuLibList = c'SHT_GNU_LIBLIST
+  toElf _ ShChecksum = c'SHT_CHECKSUM
+  toElf _ ShHisunw = c'SHT_HISUNW
+  toElf _ ShLosunw = c'SHT_LOSUNW
+  toElf _ ShHios = c'SHT_HIOS
+  toElf _ ShSunwMove = c'SHT_SUNW_move
+  toElf _ ShSunwComdat = c'SHT_SUNW_COMDAT
+  toElf _ ShSunwSyminfo = c'SHT_SUNW_syminfo
+  toElf _ ShGnuVerdef = c'SHT_GNU_verdef
+  toElf _ ShGnuVerneed = c'SHT_GNU_verneed
+  toElf _ ShGnuVersym = c'SHT_GNU_versym
+  toElf _ ShHiproc = c'SHT_HIPROC
+  toElf _ ShLoproc = c'SHT_LOPROC
+  toElf _ ShLouser = c'SHT_LOUSER
+  toElf _ ShHiuser = c'SHT_HIUSER
+  fromElf _ c | c == c'SHT_NULL = ShNull
+              | c == c'SHT_PROGBITS = ShProgBits
+              | c == c'SHT_SYMTAB = ShSymTab
+              | c == c'SHT_STRTAB = ShStrTab
+              | c == c'SHT_RELA = ShRelA
+              | c == c'SHT_HASH = ShHash
+              | c == c'SHT_DYNAMIC = ShDynamic
+              | c == c'SHT_NOTE = ShNote
+              | c == c'SHT_NOBITS = ShNobits
+              | c == c'SHT_REL = ShRel
+              | c == c'SHT_SHLIB = ShShLib
+              | c == c'SHT_DYNSYM = ShDynSym
+              | c == c'SHT_INIT_ARRAY = ShInitArray
+              | c == c'SHT_FINI_ARRAY = ShFiniArray
+              | c == c'SHT_PREINIT_ARRAY = ShPreInitArray
+              | c == c'SHT_GROUP = ShGroup
+              | c == c'SHT_SYMTAB_SHNDX = ShSymTabIndex
+              | c == c'SHT_NUM = ShNum
+              | c == c'SHT_LOOS = ShLoos
+              | c == c'SHT_GNU_ATTRIBUTES = ShGnuAttributes
+              | c == c'SHT_GNU_HASH = ShGnuHash
+              | c == c'SHT_GNU_LIBLIST = ShGnuLibList
+              | c == c'SHT_CHECKSUM = ShChecksum
+              | c == c'SHT_LOSUNW = ShLosunw
+              | c == c'SHT_SUNW_move = ShSunwMove
+              | c == c'SHT_SUNW_COMDAT = ShSunwComdat
+              | c == c'SHT_SUNW_syminfo = ShSunwSyminfo
+              | c == c'SHT_GNU_verdef = ShGnuVerdef
+              | c == c'SHT_GNU_verneed = ShGnuVerneed
+              | c == c'SHT_GNU_versym = ShGnuVersym
+              | c == c'SHT_HISUNW = ShHisunw
+              | c == c'SHT_HIOS = ShHios
+              | c == c'SHT_LOPROC = ShLoproc
+              | c == c'SHT_HIPROC = ShHiproc
+              | c == c'SHT_LOUSER = ShLouser
+              | c == c'SHT_HIUSER = ShHiuser
+
+
+-- | Type class with an associated type family, so we can translate between the c side and the haskell side.
 class Eq c => Convertible s c where
       type From (b :: Bits) c
+      -- | Go from the elf type to a common haskell type
       fromElf :: s -> From (NumBits s) c -> c
+      -- | Go from a common haskell type to the c type
       toElf :: s -> c -> From (NumBits s) c
+      -- | Use a low level operation to read a value from a structure and transform it into a haskell value.
       fromStructure ::  s -> (s -> From (NumBits s) c) -> c
+      -- | Use a low level operation to read a value from a structure and transform it into a elf value.
+      -- This operation seems somewhat strange, but in some cases, bindings-dsl chooses to represent
+      -- a value as a CUInt, while the elf type is prefered.
       fromCoStructure :: s -> (s -> c) -> From (NumBits s) c
       fromStructure s f = fromElf s (f s)
       fromCoStructure s f = toElf s (f s)
@@ -198,8 +337,8 @@ instance Convertible s ElfClass where
 
 instance Convertible s Word32 where
   type From b Word32 = ElfType b ElfWord
-  fromElf _ n = undefined
-  toElf _ = undefined
+  fromElf _ n = n
+  toElf _ n = n
 
 instance Convertible s Int32 where
   type From b Int32 = ElfType b ElfSword
@@ -241,7 +380,10 @@ instance Convertible s Machine where
 
 
 
-
+-- | The Ehdr structure is the entry header, which contain offsets
+-- and pointers to all other structures.
+-- It provides a somewhat higher level interface, than the
+-- raw bindings.
 class EhdrStructGetter (b :: Bits) (c :: MachineType) where
   data Ehdr b c :: *
   e_ident :: Ehdr b c -> ElfType b ElfString
@@ -268,7 +410,7 @@ class EhdrStructGetter (b :: Bits) (c :: MachineType) where
   e_sections :: ShdrStructGetter b c => Ehdr b c -> [Shdr b c]
 
 
-
+-- | First implementation of a  `EhdrStructGetter`
 instance EhdrStructGetter B64 X86_64 where
   data Ehdr B64 X86_64 = X8664 C'Elf64_Ehdr
   e_ident (X8664 p) = fromCoStructure p c'Elf64_Ehdr'e_ident
@@ -292,13 +434,19 @@ instance EhdrStructGetter B64 X86_64 where
   e_elf_version x = fromElf x (e_ident x !! c'EI_VERSION)
   e_abi x = fromElf x (e_ident x !! c'EI_OSABI)
 
-
+-- | Section header stub
 class ShdrStructGetter (b :: Bits) (m :: MachineType) where
   data Shdr b m :: *
+  sh_name :: Shdr b m -> ElfType b ElfString
+  sh_type :: Shdr b m -> ShType
+
+-- | Program segment header stub.
+class PhdrStructGetter (b :: Bits) (m :: MachineType) where
+  data Phdr b m :: *
 
 
--- Elf monad
 
+-- | A stub class for a monadic interface on elf files.
 class ElfOp (m :: * -> * -> *) where
   withHandle :: (Handle -> m r a) -> m r a
   loadElf :: FilePath -> m r ()
